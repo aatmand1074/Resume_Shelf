@@ -1,0 +1,47 @@
+:root {
+  /* Colors */
+  --color-paper: #F6F3EE;
+  --color-walnut: #3D2B1F;
+  --color-walnut-light: #6B4C3B;
+  --color-ink: #1A1208;
+  --color-muted: #8B7355;
+  --color-border: #D4C5A9;
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #FAF8F4;
+
+  /* Spine palette - 8 muted tones */
+  --spine-0: #C17B5A;
+  --spine-1: #7A9E7E;
+  --spine-2: #5B7FA6;
+  --spine-3: #9B7BAE;
+  --spine-4: #C9A84C;
+  --spine-5: #A65B5B;
+  --spine-6: #5B8A8A;
+  --spine-7: #8A7B5B;
+
+  /* Typography */
+  --font-serif: 'Fraunces Variable', Georgia, serif;
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Shadows */
+  --shadow-book: 2px 4px 12px rgba(61, 43, 31, 0.15);
+  --shadow-book-hover: 4px 8px 24px rgba(61, 43, 31, 0.25);
+  --shadow-card: 0 4px 24px rgba(61, 43, 31, 0.12);
+}
+
+.dark {
+  --color-paper: #1C1510;
+  --color-walnut: #D4C5A9;
+  --color-walnut-light: #B8A890;
+  --color-ink: #F0EAE0;
+  --color-muted: #9B8B70;
+  --color-border: #3D2B1F;
+  --color-surface: #261A12;
+  --color-surface-raised: #2E2018;
+}
