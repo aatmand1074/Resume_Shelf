@@ -7,25 +7,65 @@ import {
 } from '@/storage/hooks'
 import { DEFAULT_SPACE_ID, seedInitialDataIfNeeded } from '@/storage/seed'
 import { Shelf } from './Shelf'
-import { CategoryDialog } from '@/features/categories/CategoryDialog'
+import { CategoryDialog, useCategoryActions } from '@/features/categories'
+import { DropOverlay, UploadDialog } from '@/features/upload'
+import { ResumeDrawer } from '@/features/drawer'
+import { CommandPalette, invalidateTextIndexCache } from '@/features/search'
 import { Button } from '@/components/ui/Button'
-import type { Category, Resume } from '@/domain/types'
+import { downloadResumeFile } from '@/services/download'
+import { requestPersistentStorage } from '@/services/persistence'
+import type { Category, Resume, ResumeFile, TextIndexEntry } from '@/domain/types'
 import { Plus, Search, BookOpen, Sun, Moon } from 'lucide-react'
 
 export const ShelfPage: React.FC = () => {
   const [activeSpaceId] = React.useState(DEFAULT_SPACE_ID)
   const [selectedCategory, setSelectedCategory] = React.useState<Category | undefined>(undefined)
   const [categoryDialogOpen, setCategoryDialogOpen] = React.useState(false)
+
+  // Modals & drawers state
+  const [uploadDialogOpen, setUploadDialogOpen] = React.useState(false)
+  const [droppedFile, setDroppedFile] = React.useState<File | undefined>(undefined)
+  const [uploadTargetCategory, setUploadTargetCategory] = React.useState<Category | undefined>(undefined)
+  const [drawerResume, setDrawerResume] = React.useState<Resume | undefined>(undefined)
+  const [drawerOpen, setDrawerOpen] = React.useState(false)
+
+  // Phase 4: Command Palette state
+  const [searchPaletteOpen, setSearchPaletteOpen] = React.useState(false)
+
   const [darkMode, setDarkMode] = React.useState(false)
+  const [toastMessage, setToastMessage] = React.useState<string | null>(null)
 
   // Seed default space and starter categories on first load if empty
   React.useEffect(() => {
     void seedInitialDataIfNeeded(storageAdapter)
+    void requestPersistentStorage()
+  }, [])
+
+  // Phase 4: Global keyboard shortcut listener for / and Cmd/Ctrl+K
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      // Avoid triggering when user is currently typing in an input or textarea
+      const target = e.target as HTMLElement | null
+      const isInput = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable
+
+      if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !isInput)) {
+        e.preventDefault()
+        setSearchPaletteOpen((prev) => !prev)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [])
 
   const spaces = useSpaces()
   const categories = useCategories(activeSpaceId)
   const resumes = useResumes(activeSpaceId)
+
+  // Encapsulated category business logic hook
+  const { saveCategory, deleteCategory } = useCategoryActions(categories?.length || 0)
 
   const activeSpace = spaces?.find((s) => s.id === activeSpaceId) || {
     id: DEFAULT_SPACE_ID,
@@ -33,42 +73,89 @@ export const ShelfPage: React.FC = () => {
     tagline: 'Personal Resume Shelves',
   }
 
+  const showNotification = (msg: string): void => {
+    setToastMessage(msg)
+    setTimeout(() => {
+      setToastMessage(null)
+    }, 3500)
+  }
+
   const toggleDarkMode = (): void => {
     setDarkMode(!darkMode)
     document.documentElement.classList.toggle('dark', !darkMode)
   }
 
-  const handleCreateCategory = async (name: string, color: string): Promise<void> => {
-    if (selectedCategory) {
-      await storageAdapter.categories.save({
-        ...selectedCategory,
-        name,
-        color,
-      })
-    } else {
-      const newCategory: Category = {
-        id: crypto.randomUUID(),
-        spaceId: activeSpaceId,
-        name,
-        color,
-        order: (categories?.length || 0),
-        createdAt: Date.now(),
-      }
-      await storageAdapter.categories.save(newCategory)
-    }
+  const handleSaveCategory = async (name: string, color: string): Promise<void> => {
+    await saveCategory(activeSpaceId, name, color, selectedCategory)
   }
 
   const handleDeleteCategory = async (id: string): Promise<void> => {
-    await storageAdapter.categories.delete(id)
+    await deleteCategory(id)
   }
 
+  // Open Drawer on Book click
   const handleBookClick = (resume: Resume): void => {
-    // Will open Drawer in Phase 3
-    alert(`Resume clicked: ${resume.title}\n(Preview and Download drawer will open in Phase 3!)`)
+    setDrawerResume(resume)
+    setDrawerOpen(true)
+  }
+
+  // Quick download with Shift+Enter
+  const handleQuickDownload = async (resume: Resume): Promise<void> => {
+    try {
+      const category = categories?.find((c) => c.id === resume.categoryId)
+      const categoryName = category?.name || 'General'
+      await downloadResumeFile(resume, categoryName, storageAdapter)
+      showNotification(`Downloading ${resume.title}...`)
+    } catch (err: unknown) {
+      showNotification(err instanceof Error ? err.message : 'Download failed')
+    }
+  }
+
+  // Full-page file drop
+  const handleFileDrop = (file: File): void => {
+    setDroppedFile(file)
+    setUploadTargetCategory(undefined)
+    setUploadDialogOpen(true)
+  }
+
+  // Save new resume from UploadDialog
+  const handleSaveResume = async (
+    newResume: Resume,
+    file?: ResumeFile,
+    textIndex?: TextIndexEntry
+  ): Promise<void> => {
+    await storageAdapter.resumes.save(newResume, file, textIndex)
+    invalidateTextIndexCache()
+    showNotification(`Added "${newResume.title}" to shelf!`)
+  }
+
+  // Update existing resume from Drawer
+  const handleUpdateResume = async (updated: Resume): Promise<void> => {
+    await storageAdapter.resumes.save(updated)
+    setDrawerResume(updated)
+    invalidateTextIndexCache()
+    showNotification('Resume updated')
+  }
+
+  // Delete resume from Drawer
+  const handleDeleteResume = async (id: string): Promise<void> => {
+    await storageAdapter.resumes.delete(id)
+    invalidateTextIndexCache()
+    showNotification('Resume deleted')
   }
 
   return (
     <div className="min-h-screen bg-[var(--color-paper)] text-[var(--color-ink)] flex flex-col transition-colors duration-200">
+      {/* Full-Page Drag and Drop Overlay */}
+      <DropOverlay onFileDrop={handleFileDrop} />
+
+      {/* Toast Notification Banner */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-[var(--radius-md)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl text-xs font-medium text-[var(--color-ink)] animate-in fade-in slide-in-from-bottom-2">
+          {toastMessage}
+        </div>
+      )}
+
       {/* Top Application Header */}
       <header className="sticky top-0 z-40 bg-[var(--color-paper)]/85 backdrop-blur-md border-b border-[var(--color-border)] px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -85,11 +172,11 @@ export const ShelfPage: React.FC = () => {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
-          {/* Search Trigger */}
+          {/* Phase 4: Search Trigger */}
           <button
             type="button"
             onClick={() => {
-              alert('Search Command Palette opens in Phase 4 (shortcut: / or Cmd+K)')
+              setSearchPaletteOpen(true)
             }}
             className="flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-muted)] hover:border-[var(--color-walnut)] transition-colors cursor-pointer"
           >
@@ -113,11 +200,13 @@ export const ShelfPage: React.FC = () => {
             <span className="hidden sm:inline">New Shelf</span>
           </Button>
 
-          {/* Add Resume Button (Placeholder for Phase 3 upload modal) */}
+          {/* Add Resume Button */}
           <Button
             size="sm"
             onClick={() => {
-              alert('Upload modal opens in Phase 3! You can drop any PDF/DOCX or click + on a shelf.')
+              setDroppedFile(undefined)
+              setUploadTargetCategory(undefined)
+              setUploadDialogOpen(true)
             }}
           >
             <BookOpen className="w-3.5 h-3.5" />
@@ -167,8 +256,13 @@ export const ShelfPage: React.FC = () => {
                   category={category}
                   resumes={categoryResumes}
                   onBookClick={handleBookClick}
+                  onQuickDownload={(res) => {
+                    void handleQuickDownload(res)
+                  }}
                   onAddBookClick={(cat) => {
-                    alert(`Add resume to shelf: ${cat.name}\n(Upload modal opens in Phase 3!)`)
+                    setUploadTargetCategory(cat)
+                    setDroppedFile(undefined)
+                    setUploadDialogOpen(true)
                   }}
                   onEditCategory={(cat) => {
                     setSelectedCategory(cat)
@@ -191,9 +285,53 @@ export const ShelfPage: React.FC = () => {
         open={categoryDialogOpen}
         category={selectedCategory}
         onOpenChange={setCategoryDialogOpen}
-        onSave={handleCreateCategory}
+        onSave={handleSaveCategory}
         onDelete={handleDeleteCategory}
       />
+
+      {/* Upload Dialog */}
+      {categories && (
+        <UploadDialog
+          open={uploadDialogOpen}
+          onOpenChange={setUploadDialogOpen}
+          categories={categories}
+          activeSpaceId={activeSpaceId}
+          targetCategory={uploadTargetCategory}
+          initialFile={droppedFile}
+          onSave={handleSaveResume}
+        />
+      )}
+
+      {/* Resume Preview & Actions Drawer */}
+      {categories && (
+        <ResumeDrawer
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          resume={drawerResume}
+          categories={categories}
+          onUpdateResume={handleUpdateResume}
+          onDeleteResume={handleDeleteResume}
+          onReplaceFileRequested={(res) => {
+            setDrawerOpen(false)
+            setUploadTargetCategory(categories.find((c) => c.id === res.categoryId))
+            setUploadDialogOpen(true)
+          }}
+        />
+      )}
+
+      {/* Phase 4: Command Palette Search */}
+      {categories && resumes && (
+        <CommandPalette
+          open={searchPaletteOpen}
+          onOpenChange={setSearchPaletteOpen}
+          resumes={resumes}
+          categories={categories}
+          onSelectResume={handleBookClick}
+          onQuickDownload={(res) => {
+            void handleQuickDownload(res)
+          }}
+        />
+      )}
     </div>
   )
 }

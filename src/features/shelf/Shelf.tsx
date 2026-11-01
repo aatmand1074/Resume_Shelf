@@ -8,6 +8,7 @@ export interface ShelfProps {
   category: Category
   resumes: Resume[]
   onBookClick?: (resume: Resume) => void
+  onQuickDownload?: (resume: Resume) => void
   onAddBookClick?: (category: Category) => void
   onEditCategory?: (category: Category) => void
 }
@@ -16,6 +17,7 @@ export const Shelf: React.FC<ShelfProps> = ({
   category,
   resumes,
   onBookClick,
+  onQuickDownload,
   onAddBookClick,
   onEditCategory,
 }) => {
@@ -75,6 +77,7 @@ export const Shelf: React.FC<ShelfProps> = ({
                   key={resume.id}
                   resume={resume}
                   onClick={onBookClick}
+                  onQuickDownload={onQuickDownload}
                 />
               ))
             )}

@@ -151,6 +151,10 @@ export class DexieTextIndexRepository implements ITextIndexRepository {
     return this.db.textIndex.get(resumeId)
   }
 
+  async listAll(): Promise<TextIndexEntry[]> {
+    return this.db.textIndex.toArray()
+  }
+
   async save(entry: TextIndexEntry): Promise<void> {
     await this.db.textIndex.put(entry)
   }

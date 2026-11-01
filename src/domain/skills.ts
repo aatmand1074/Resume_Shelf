@@ -113,7 +113,6 @@ export function suggestSkillsFromText(extractedText: string, limit = 12): string
   for (const skill of COMMON_SKILLS) {
     let count = 0
     for (const alias of skill.aliases) {
-      // Word boundary match
       const escaped = alias.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')
       const regex = new RegExp(`(?:^|[^a-zA-Z0-9_])${escaped}(?:$|[^a-zA-Z0-9_])`, 'gi')
       const matches = lower.match(regex)
@@ -126,9 +125,133 @@ export function suggestSkillsFromText(extractedText: string, limit = 12): string
     }
   }
 
-  // Rank by frequency descending, then take top `limit`
   return scores
     .sort((a, b) => b.count - a.count)
     .slice(0, limit)
     .map((s) => s.name)
+}
+
+/**
+ * Role category patterns mapping keywords to candidate roles
+ */
+export interface RoleProfileMatch {
+  suggestedRole: string
+  confidence: number
+  matchedKeywords: string[]
+}
+
+const ROLE_DEFINITIONS: { role: string; keywords: string[]; shelfKeywords: string[] }[] = [
+  {
+    role: 'AI / ML Engineer',
+    shelfKeywords: ['ai', 'ml', 'machine learning', 'artificial intelligence', 'deep learning'],
+    keywords: [
+      'machine learning', 'deep learning', 'pytorch', 'tensorflow', 'llm', 'llms',
+      'transformers', 'nlp', 'computer vision', 'neural network', 'huggingface',
+      'model training', 'keras', 'scikit-learn', 'data science',
+    ],
+  },
+  {
+    role: 'Data Analyst',
+    shelfKeywords: ['data analyst', 'business analyst', 'analytics', 'bi'],
+    keywords: [
+      'data analysis', 'sql', 'tableau', 'power bi', 'excel', 'pandas',
+      'dashboards', 'reporting', 'bi', 'business intelligence', 'eda', 'metrics',
+      'kpi', 'statistics', 'exploratory data',
+    ],
+  },
+  {
+    role: 'Full-Stack Developer',
+    shelfKeywords: ['full stack', 'fullstack', 'full-stack', 'web developer'],
+    keywords: [
+      'full stack', 'fullstack', 'react', 'node.js', 'typescript', 'javascript',
+      'next.js', 'rest apis', 'graphql', 'html5', 'css3', 'tailwind', 'express',
+    ],
+  },
+  {
+    role: 'Python / Backend Developer',
+    shelfKeywords: ['backend', 'python', 'server', 'api'],
+    keywords: [
+      'backend', 'python', 'django', 'fastapi', 'flask', 'microservices',
+      'redis', 'kafka', 'postgres', 'postgresql', 'sql', 'docker', 'golang',
+    ],
+  },
+  {
+    role: 'Cloud / DevOps Engineer',
+    shelfKeywords: ['devops', 'cloud', 'sre', 'infrastructure'],
+    keywords: [
+      'devops', 'kubernetes', 'k8s', 'docker', 'terraform', 'aws', 'gcp',
+      'azure', 'ci/cd', 'helm', 'ansible', 'linux', 'cloudformation',
+    ],
+  },
+]
+
+/**
+ * Reads resume text and classifies what role it represents with matching keywords
+ */
+export function inferRoleFromText(extractedText: string): RoleProfileMatch {
+  if (!extractedText.trim()) {
+    return {
+      suggestedRole: 'General Developer',
+      confidence: 0,
+      matchedKeywords: [],
+    }
+  }
+
+  const lower = extractedText.toLowerCase()
+  let bestRole = 'General Candidate'
+  let bestScore = 0
+  let bestMatches: string[] = []
+
+  for (const def of ROLE_DEFINITIONS) {
+    const matched: string[] = []
+    let score = 0
+
+    for (const kw of def.keywords) {
+      const escaped = kw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')
+      const regex = new RegExp(`(?:^|[^a-zA-Z0-9_])${escaped}(?:$|[^a-zA-Z0-9_])`, 'gi')
+      const count = (lower.match(regex) || []).length
+      if (count > 0) {
+        matched.push(kw)
+        score += count * (kw.length > 5 ? 2 : 1)
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score
+      bestRole = def.role
+      bestMatches = matched
+    }
+  }
+
+  const confidence = Math.min(Math.round((bestScore / 15) * 100), 100)
+
+  return {
+    suggestedRole: bestRole,
+    confidence,
+    matchedKeywords: bestMatches.slice(0, 8),
+  }
+}
+
+/**
+ * Finds the best existing shelf category that matches the detected role
+ */
+export function matchBestCategory(
+  detectedRole: string,
+  categories: { id: string; name: string }[]
+): string | undefined {
+  if (categories.length === 0) return undefined
+
+  const roleDef = ROLE_DEFINITIONS.find((r) => r.role === detectedRole)
+  const searchTerms = roleDef ? roleDef.shelfKeywords : [detectedRole.toLowerCase()]
+
+  for (const cat of categories) {
+    const catNameLower = cat.name.toLowerCase()
+    for (const term of searchTerms) {
+      if (catNameLower.includes(term.toLowerCase()) || term.toLowerCase().includes(catNameLower)) {
+        return cat.id
+      }
+    }
+  }
+
+  return categories[0].id
 }

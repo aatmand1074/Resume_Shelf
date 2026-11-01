@@ -1,1 +1,2 @@
-// Categories feature exports — to be implemented in Phase 1
+export * from './CategoryDialog'
+export * from './useCategoryActions'

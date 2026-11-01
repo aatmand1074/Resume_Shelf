@@ -40,6 +40,7 @@ export interface IFileRepository {
 
 export interface ITextIndexRepository {
   get(resumeId: ID): Promise<TextIndexEntry | undefined>
+  listAll(): Promise<TextIndexEntry[]>
   save(entry: TextIndexEntry): Promise<void>
   delete(resumeId: ID): Promise<void>
   search(query: string): Promise<ID[]>

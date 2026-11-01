@@ -1,8 +1,15 @@
 import React from 'react'
 import type { Category } from '@/domain/types'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/Dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ColorPicker } from '@/components/ui/ColorPicker'
 import { SPINE_PALETTE } from '@/domain/types'
 
 interface CategoryFormContentProps {
@@ -88,31 +95,22 @@ const CategoryFormContent: React.FC<CategoryFormContentProps> = ({
         <label className="text-xs font-semibold text-[var(--color-ink)]">
           Accent Color
         </label>
-        <div className="flex items-center gap-2 pt-1">
-          {SPINE_PALETTE.map((palColor) => (
-            <button
-              key={palColor}
-              type="button"
-              onClick={() => {
-                setColor(palColor)
-              }}
-              className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
-                color === palColor ? 'ring-2 ring-offset-2 ring-[var(--color-walnut)] scale-110' : 'opacity-70 hover:opacity-100'
-              }`}
-              style={{ backgroundColor: palColor }}
-            />
-          ))}
-        </div>
+        <ColorPicker
+          value={color}
+          onChange={setColor}
+          className="pt-1"
+        />
       </div>
 
       <div className="flex items-center justify-between pt-4 border-t border-[var(--color-border)]">
         {category && onDelete ? (
           <Button
             type="button"
-            variant="danger"
+            variant="ghost"
             size="sm"
             onClick={handleDelete}
             disabled={loading}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
           >
             Delete Shelf
           </Button>
@@ -131,7 +129,7 @@ const CategoryFormContent: React.FC<CategoryFormContentProps> = ({
             Cancel
           </Button>
           <Button type="submit" size="sm" disabled={loading}>
-            {loading ? 'Saving...' : 'Save'}
+            {loading ? 'Saving...' : category ? 'Save Changes' : 'Create Shelf'}
           </Button>
         </div>
       </div>
@@ -156,19 +154,20 @@ export const CategoryDialog: React.FC<CategoryDialogProps> = ({
 }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>{category ? 'Edit Shelf' : 'Create New Shelf'}</DialogTitle>
+          <DialogTitle>
+            {category ? 'Edit Shelf' : 'New Shelf'}
+          </DialogTitle>
           <DialogDescription>
             {category
-              ? 'Update the name and accent color for this resume shelf.'
-              : 'Add a new category shelf to organize your resumes.'}
+              ? 'Customize your shelf name and color palette tone.'
+              : 'Add a new shelf to group resumes by role, industry, or discipline.'}
           </DialogDescription>
         </DialogHeader>
 
         {open && (
           <CategoryFormContent
-            key={category?.id ?? 'new'}
             category={category}
             onClose={() => {
               onOpenChange(false)
@@ -181,4 +180,3 @@ export const CategoryDialog: React.FC<CategoryDialogProps> = ({
     </Dialog>
   )
 }
-
