@@ -24,24 +24,28 @@ export const Shelf: React.FC<ShelfProps> = ({
   const [collapsed, setCollapsed] = React.useState(false)
 
   return (
-    <div className="flex flex-col mb-10 group/shelf">
-      {/* Category Plate Header */}
-      <div className="flex items-center justify-between pb-2 px-1">
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col mb-12 group/shelf rs-fade-up">
+      {/* Category header */}
+      <div className="flex items-center justify-between pb-2.5 px-1">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => {
-              setCollapsed(!collapsed)
-            }}
-            className="p-1 rounded-[var(--radius-sm)] text-[var(--color-muted)] hover:text-[var(--color-walnut)] transition-colors cursor-pointer"
+            onClick={() => { setCollapsed(!collapsed) }}
+            className="p-1 rounded-[var(--radius-sm)] text-[var(--color-muted)] hover:text-[var(--color-accent)] transition-colors cursor-pointer"
             aria-label={collapsed ? 'Expand shelf' : 'Collapse shelf'}
           >
-            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {collapsed
+              ? <ChevronRight className="w-4 h-4" />
+              : <ChevronDown className="w-4 h-4" />}
           </button>
 
+          {/* Color dot with subtle ring */}
           <div
             className="w-3 h-3 rounded-full shrink-0"
-            style={{ backgroundColor: category.color }}
+            style={{
+              backgroundColor: category.color,
+              boxShadow: `0 0 0 2px ${category.color}40, 0 0 0 3px var(--color-paper)`,
+            }}
           />
 
           <h3 className="font-serif font-bold text-lg text-[var(--color-walnut)] tracking-tight">
@@ -56,29 +60,45 @@ export const Shelf: React.FC<ShelfProps> = ({
         <button
           type="button"
           onClick={() => onEditCategory?.(category)}
-          aria-label={`Manage shelf ${category.name}`}
-          className="opacity-0 group-hover/shelf:opacity-100 p-1.5 rounded-[var(--radius-sm)] text-[var(--color-muted)] hover:text-[var(--color-walnut)] hover:bg-[var(--color-surface-raised)] transition-all cursor-pointer"
+          aria-label={`Manage ${category.name}`}
+          className="opacity-0 group-hover/shelf:opacity-100 p-1.5 rounded-[var(--radius-sm)] text-[var(--color-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-muted)] transition-all cursor-pointer"
         >
           <MoreVertical className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Books Container */}
-      {!collapsed && (
+      {/* Books container with animated height collapse */}
+      <div
+        className="overflow-hidden transition-all duration-350"
+        style={{
+          maxHeight: collapsed ? '0px' : '500px',
+          opacity: collapsed ? 0 : 1,
+          transition: 'max-height 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.25s ease',
+        }}
+      >
         <div className="relative">
-          <div className="flex items-end gap-3.5 sm:gap-4 overflow-x-auto pb-1 pt-6 px-4 scrollbar-none min-h-[220px]">
+          {/* Background shelf surface — subtle teal tint */}
+          <div
+            className="absolute inset-x-0 top-0 bottom-3 rounded-t-[var(--radius-md)] opacity-30"
+            style={{
+              background: 'linear-gradient(180deg, var(--color-surface-raised) 0%, transparent 100%)',
+            }}
+          />
+
+          <div className="flex items-end gap-3.5 sm:gap-4 overflow-x-auto pb-1 pt-6 px-4 scrollbar-none min-h-[230px] rs-stagger">
             {resumes.length === 0 ? (
               <div className="h-[175px] flex items-center justify-center text-xs text-[var(--color-muted)] italic px-4 select-none">
                 No resumes yet. Drop a file here or click + to add.
               </div>
             ) : (
               resumes.map((resume) => (
-                <Book
-                  key={resume.id}
-                  resume={resume}
-                  onClick={onBookClick}
-                  onQuickDownload={onQuickDownload}
-                />
+                <div key={resume.id} className="rs-fade-up shrink-0">
+                  <Book
+                    resume={resume}
+                    onClick={onBookClick}
+                    onQuickDownload={onQuickDownload}
+                  />
+                </div>
               ))
             )}
             <AddBookSlot
@@ -87,18 +107,28 @@ export const Shelf: React.FC<ShelfProps> = ({
             />
           </div>
 
-          {/* Wooden Walnut Shelf Base Plank */}
+          {/* Shelf plank — terracotta-teal gradient */}
           <div
-            className="w-full h-3 rounded-[var(--radius-sm)] shadow-md"
+            className="relative w-full h-4 rounded-[var(--radius-sm)]"
             style={{
-              background: 'linear-gradient(180deg, var(--color-walnut-light) 0%, var(--color-walnut) 100%)',
-              borderTop: '1px solid rgba(255,255,255,0.15)',
+              background: 'linear-gradient(180deg, #5A9490 0%, var(--deep-teal, #154A45) 100%)',
+              boxShadow: '0 4px 12px rgba(3,28,22,0.28)',
+              borderTop: '1px solid rgba(255,255,255,0.12)',
+            }}
+          >
+            {/* Plank highlight */}
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-white/20 rounded-t-[var(--radius-sm)]" />
+          </div>
+
+          {/* Drop shadow under plank */}
+          <div
+            className="w-[97%] mx-auto h-3 rounded-b-full"
+            style={{
+              background: 'radial-gradient(ellipse at center, rgba(3,28,22,0.22) 0%, transparent 70%)',
             }}
           />
-          {/* Depth shadow under the shelf plank */}
-          <div className="w-full h-2 bg-black/10 blur-xs rounded-full" />
         </div>
-      )}
+      </div>
     </div>
   )
 }

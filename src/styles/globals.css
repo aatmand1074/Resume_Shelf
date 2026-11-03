@@ -18,10 +18,83 @@ body {
   min-height: 100vh;
 }
 
+/* ── Keyframe animations ──────────────────────────────── */
+
+@keyframes rs-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rs-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes rs-scale-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes rs-slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rs-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes rs-pulse-border {
+  0%, 100% { border-color: var(--color-border); }
+  50%       { border-color: var(--color-accent); }
+}
+
+@keyframes rs-toast-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* ── Animation utility classes ────────────────────────── */
+
+.rs-fade-up   { animation: rs-fade-up   0.35s cubic-bezier(0.22,1,0.36,1) both; }
+.rs-fade-in   { animation: rs-fade-in   0.25s ease both; }
+.rs-scale-in  { animation: rs-scale-in  0.3s  cubic-bezier(0.22,1,0.36,1) both; }
+.rs-slide-down{ animation: rs-slide-down 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+.rs-toast-in  { animation: rs-toast-in  0.35s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* Stagger delays for children */
+.rs-stagger > *:nth-child(1)  { animation-delay: 0.04s; }
+.rs-stagger > *:nth-child(2)  { animation-delay: 0.08s; }
+.rs-stagger > *:nth-child(3)  { animation-delay: 0.12s; }
+.rs-stagger > *:nth-child(4)  { animation-delay: 0.16s; }
+.rs-stagger > *:nth-child(5)  { animation-delay: 0.20s; }
+.rs-stagger > *:nth-child(6)  { animation-delay: 0.24s; }
+.rs-stagger > *:nth-child(7)  { animation-delay: 0.28s; }
+.rs-stagger > *:nth-child(8)  { animation-delay: 0.32s; }
+.rs-stagger > *:nth-child(n+9){ animation-delay: 0.36s; }
+
+/* Shimmer loading skeleton */
+.rs-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-raised) 0%,
+    var(--color-border) 50%,
+    var(--color-surface-raised) 100%
+  );
+  background-size: 200% 100%;
+  animation: rs-shimmer 1.4s ease-in-out infinite;
+}
+
+/* Accent glow utility */
+.rs-accent-glow {
+  box-shadow: var(--shadow-accent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
   }
 }
