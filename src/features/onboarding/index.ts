@@ -1,1 +1,1 @@
-// Onboarding feature exports — to be implemented in Phase 1
+export { OnboardingDialog } from './OnboardingDialog'
